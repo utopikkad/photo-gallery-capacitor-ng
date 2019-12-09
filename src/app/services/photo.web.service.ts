@@ -27,13 +27,15 @@ export class WebPhotoService implements PhotoService {
   }
 
   getCameraConfig(): CameraResultType {
-    return CameraResultType.DataUrl;
+    return CameraResultType.Uri;
   }
 
   async savePhoto(cameraPhoto: CameraPhoto): Promise<Photo> {
-    const base64Data = cameraPhoto.dataUrl;
+    const response = await fetch(cameraPhoto.webPath);
+    const blob = await response.blob();
+    const base64Data = await this.convertBlobToBase64(blob) as string;
 
-    // Write the file to the data directory
+     // Write the file to the data directory (instead of temp storage)
     const fileName = new Date().getTime() + '.jpeg';
     await Filesystem.writeFile({
       path: fileName,
@@ -43,9 +45,18 @@ export class WebPhotoService implements PhotoService {
 
     return {
       filepath: fileName,
-      base64: base64Data,
-      // Unused - Display photos using base64 data instead.
-      webviewPath: ""
+      webviewPath: cameraPhoto.webPath,
+      // Unused - Display photos using webviewPath instead.
+      base64: ""
     };
   }
+
+  convertBlobToBase64 = blob => new Promise((resolve, reject) => {
+    const reader = new FileReader;
+    reader.onerror = reject;
+    reader.onload = () => {
+        resolve(reader.result);
+    };
+    reader.readAsDataURL(blob);
+  });
 }
